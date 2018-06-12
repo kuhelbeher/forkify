@@ -1,8 +1,10 @@
 import Search from './models/Search';
-import Recipe from './models/Recipe'
+import Recipe from './models/Recipe';
+import List from './models/List';
 import * as searchView from './views/searchView';
 import * as recipeView from './views/recipeView';
-import { elements, renderLoader, clearLoader } from './views/base'; 
+import * as listView from './views/listView';
+import { elements, renderLoader, clearLoader } from './views/base';
 
 /* Global stat of the app 
 	- search object
@@ -15,7 +17,7 @@ const state = {};
 // SEARCH CONTROLLER
 const controlSearch = async () => {
 	// 1 get the query from the view
-	const query = searchView.getInput(); 
+	const query = searchView.getInput();
 
 	if (query) {
 		// 2 new search object and add to state
@@ -52,7 +54,7 @@ elements.searchResPages.addEventListener('click', e => {
 	if (btn) {
 		const goToPage = parseInt(btn.dataset.goto, 10);
 		searchView.clearResults();
-		
+
 		searchView.renderResults(state.search.result, goToPage);
 	}
 });
@@ -61,7 +63,7 @@ elements.searchResPages.addEventListener('click', e => {
 const controlRecipe = async () => {
 	// get id from url
 	const id = window.location.hash.replace('#', '');
-	
+
 	if (id) {
 		// prepare UI for changes
 		recipeView.clearRecipe();
@@ -90,10 +92,69 @@ const controlRecipe = async () => {
 		} catch (err) {
 			alert('Error processing recipe');
 		}
-		
+
 	}
 };
 
 // window.addEventListener('hashchange', controlRecipe);
 // window.addEventListener('load', controlRecipe);
 ['hashchange', 'load'].forEach(e => window.addEventListener(e, controlRecipe));
+
+
+
+// LIST CONTROLLER
+const controlList = () => {
+	// create a new list if there isn't one yet
+	if (!state.list) {
+		state.list = new List();
+	}
+
+	// add each ingredients to the list and UI
+	state.recipe.ingredients.forEach(el => {
+		const item = state.list.addItem(el.count, el.unit, el.ingredient);
+		listView.renderItem(item);
+	});
+}
+
+// Handle delete and update list item events
+elements.shopping.addEventListener('click', e => {
+	const id = e.target.closest('.shopping__item').dataset.itemid;
+
+	// handle the delete button
+	if (e.target.matches('.shopping__delete, .shopping__delete *')) {
+		// delete from state
+		state.list.deleteItem(id);
+		// delete from UI
+		listView.deleteItem(id);
+		// handle the update button
+	} else if (e.target.matches('.shopping__count-value')) {
+		const val = parseFloat(e.target.value, 10);
+		if (val >= 0) {
+			state.list.updateCount(id, val);
+		} else {
+			e.target.value = 0;
+		}
+	}
+});
+
+
+
+
+// handling recipe button clicks
+elements.recipe.addEventListener('click', e => {
+	if (e.target.matches('.btn-decrease, .btn-decrease *')) {
+		// Decrease button is clicked
+		if (state.recipe.servings > 1) {
+			state.recipe.updateServings('dec');
+			recipeView.updateServingsIngredients(state.recipe);
+		}
+	} else if (e.target.matches('.btn-increase, .btn-increase *')) {
+		// Increase button is clicked
+		state.recipe.updateServings('inc');
+		recipeView.updateServingsIngredients(state.recipe);
+	} else if (e.target.matches('.recipe__btn--add, .recipe__btn--add *')) {
+		controlList();
+	}
+});
+
+window.t = new List();
